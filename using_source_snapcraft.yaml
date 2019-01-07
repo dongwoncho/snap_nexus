@@ -1,0 +1,50 @@
+name: nexus
+#base: core18 # the base snap is the execution environment for this snap
+
+#version: VERSION
+version: 3.14.0-04
+summary: Sonatype Nexus Repository Manager
+description: |
+  Nexus is a repository manager. It allows you to proxy, collect, and
+  manage your dependencies so that you are not constantly juggling
+  a collection of JARs. It makes it easy to distribute your software.
+  Internally, you configure your build to publish artifacts to Nexus
+  and they then become available to other developers.
+  You get the benefits of having your own 'central',
+  and there is no easier way to collaborate.
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+apps:
+  nexus:
+    command: nexus/bin/nexus start
+    stop-command: nexus/bin/nexus stop
+    daemon: forking
+    plugs: [network, network-bind]
+
+parts:
+  nexus:
+    plugin: dump
+    source: https://github.com/sonatype/nexus-public
+    source-type: git
+    source-tag: release-3.14.0-04
+    build-packages:
+      - openjdk-8-jre
+      - unzip
+    stage-packages:
+      - openjdk-8-jre
+    override-build: |
+      sed -i 's/repository.sonatype.org\/content\/groups/nexus.origin.don\/repository/g' pom.xml
+      sed -i 's/\(^.*-Dmaven.home.* \)\(\\\)/\1\"-Dmaven.test.skip=true" \2/g' mvnw
+      JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 bash -x mvnw clean install
+      unzip -d $SNAPCRAFT_PART_INSTALL/target assemblies/nexus-base-template/target/nexus-base-template-*.zip
+    organize:
+      target/nexus-base-template-3.14.0-04: nexus
+      target/sonatype-work: sonatype-work
+    filesets:
+      default: [ nexus, sonatype-work ]
+    stage:
+      - $default
+    prime:
+      - $default

@@ -1,0 +1,8 @@
+# to install snapcraft
+sudo snap install snapcraft --classic
+
+# to run snapcraft
+VERSION=3.14.0-04 snapcraft --debug
+
+# to install and test locally
+sudo snap try prime --devmode

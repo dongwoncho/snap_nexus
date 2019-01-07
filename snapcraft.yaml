@@ -1,0 +1,65 @@
+name: nexus
+#base: core16 # the base snap is the execution environment for this snap
+
+# 'version' will be replaced by 'version-script'
+version: 0.0.0
+version-script: echo $VERSION
+
+summary: Sonatype Nexus Repository Manager
+description: |
+  Nexus is a repository manager. It allows you to proxy, collect, and
+  manage your dependencies so that you are not constantly juggling
+  a collection of JARs. It makes it easy to distribute your software.
+  Internally, you configure your build to publish artifacts to Nexus
+  and they then become available to other developers.
+  You get the benefits of having your own 'central',
+  and there is no easier way to collaborate.
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+apps:
+  nexus:
+    command: nexus/bin/nexus start
+    stop-command: nexus/bin/nexus stop
+    daemon: forking
+    plugs: [network, network-bind]
+
+parts:
+  nexus:
+    plugin: dump
+    build-packages:
+      - wget
+      - tar
+    override-build: |
+      #      wget http://download.sonatype.com/nexus/3/nexus-$VERSION-unix.tar.gz
+      wget --no-check-certificate https://nexus.origin.don/repository/download-sonatype/nexus/3/nexus-$VERSION-unix.tar.gz
+      mkdir $SNAPCRAFT_PART_BUILD/target
+      tar zxvf nexus-$VERSION-unix.tar.gz -C $SNAPCRAFT_PART_BUILD/target
+      cp -rv $SNAPCRAFT_PART_BUILD/target $SNAPCRAFT_PART_INSTALL/
+      mv $SNAPCRAFT_PART_INSTALL/target/nexus-$VERSION $SNAPCRAFT_PART_INSTALL/target/nexus
+      sed -i 's/\(^\-.*=\)..\(\/sonatype-work.*\)/\1\/var\/snap\/nexus\/common\2/g' $SNAPCRAFT_PART_INSTALL/target/nexus/bin/nexus.vmoptions
+    organize:
+      target/nexus: nexus
+      target/sonatype-work: sonatype-work
+    filesets:
+      default: [ nexus, sonatype-work ]
+    stage:
+      - $default
+    prime:
+      - $default
+  jdk:
+    plugin: jdk
+    stage-packages:
+      - openjdk-8-jre
+      - ca-certificates
+      - ca-certificates-java
+      - openjdk-8-jre-headless
+    stage:
+      - etc/default/cacerts
+      - usr/lib/jvm/java-8-openjdk-amd64/jre/lib/security/cacerts
+  cacerts:
+    plugin: dump
+    source: .
+    organize:
+      cacerts: etc/ssl/certs/java/cacerts
